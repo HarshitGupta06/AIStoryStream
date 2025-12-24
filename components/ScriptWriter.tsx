@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { writeScript } from '../services/geminiService';
 import { Story, Script } from '../types';
 
@@ -12,6 +12,27 @@ const ScriptWriter: React.FC<ScriptWriterProps> = ({ story, onScriptComplete, on
   const [loading, setLoading] = useState(false);
   const [tone, setTone] = useState("engaging and suspenseful");
   const [generatedScript, setGeneratedScript] = useState<string>("");
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Unique key for this story's draft
+  const storageKey = `script_draft_${story.id}`;
+
+  // Load from local storage on mount
+  useEffect(() => {
+    const savedScript = localStorage.getItem(storageKey);
+    if (savedScript) {
+      setGeneratedScript(savedScript);
+      setLastSaved(new Date());
+    }
+  }, [storageKey]);
+
+  // Save to local storage whenever script changes
+  useEffect(() => {
+    if (generatedScript) {
+      localStorage.setItem(storageKey, generatedScript);
+      setLastSaved(new Date());
+    }
+  }, [generatedScript, storageKey]);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -24,6 +45,12 @@ const ScriptWriter: React.FC<ScriptWriterProps> = ({ story, onScriptComplete, on
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirm = () => {
+    // Clear storage for this story upon completion so next time it starts fresh or doesn't clutter
+    localStorage.removeItem(storageKey);
+    onScriptComplete({ title: 'New Video', content: generatedScript, tone: tone as any});
   };
 
   return (
@@ -82,17 +109,27 @@ const ScriptWriter: React.FC<ScriptWriterProps> = ({ story, onScriptComplete, on
 
         {/* Output Column */}
         <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 flex flex-col h-[500px]">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase mb-2">Generated Script</h3>
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase">Generated Script</h3>
+                {lastSaved && generatedScript && (
+                    <span className="text-xs text-green-500 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                        Saved
+                    </span>
+                )}
+            </div>
+            
             {generatedScript ? (
                 <>
                     <textarea 
                         className="flex-1 w-full bg-gray-900 border border-gray-600 rounded-lg p-4 text-gray-200 font-mono text-sm resize-none focus:ring-2 focus:ring-purple-500 outline-none"
                         value={generatedScript}
                         onChange={(e) => setGeneratedScript(e.target.value)}
+                        placeholder="Generated script will appear here. You can edit it manually..."
                     />
                     <div className="mt-4 flex justify-end">
                         <button
-                            onClick={() => onScriptComplete({ title: 'New Video', content: generatedScript, tone: tone as any})}
+                            onClick={handleConfirm}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold shadow-lg transition-transform active:scale-95"
                         >
                             Confirm & Generate Assets &rarr;

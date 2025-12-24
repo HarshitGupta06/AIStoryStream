@@ -1,0 +1,5 @@
+{
+  "name": "StoryStream",
+  "description": "An automated content pipeline that finds stories on Reddit, rewrites them into engaging scripts using AI, and generates video/audio assets for YouTube.",
+  "requestFramePermissions": []
+}
